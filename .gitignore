@@ -4,3 +4,4 @@ tmp/
 .tomcatplugin
 WEB-INF/jforumLuceneIndex/*
 dist/
+
