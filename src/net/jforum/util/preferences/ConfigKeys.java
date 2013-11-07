@@ -165,6 +165,9 @@ public class ConfigKeys
 	public static final String CAPTCHA_MAX_FONT_SIZE = "captcha.max.font.size";
 	public static final String CAPTCHA_MIN_WORDS = "captcha.min.words";
 	public static final String CAPTCHA_MAX_WORDS = "captcha.max.words";
+	public static final String CAPTCHA_FONT_RGB_RED = "captcha.font.rgb.red";
+	public static final String CAPTCHA_FONT_RGB_GREEN = "captcha.font.rgb.green";
+	public static final String CAPTCHA_FONT_RGB_BLUE = "captcha.font.rgb.blue";
 	
 	public static final String I18N_DEFAULT = "i18n.board.default";
 	public static final String I18N_DEFAULT_ADMIN = "i18n.internal";

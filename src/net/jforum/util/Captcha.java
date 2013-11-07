@@ -45,6 +45,7 @@ package net.jforum.util;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
+import java.awt.image.ImageFilter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -58,20 +59,41 @@ import net.jforum.SessionFacade;
 import net.jforum.util.preferences.ConfigKeys;
 import net.jforum.util.preferences.SystemGlobals;
 
+import org.apache.commons.lang.ObjectUtils;
 import org.apache.log4j.Logger;
 
+import com.jhlabs.image.CheckFilter;
+import com.jhlabs.image.CrystalizeFilter;
+import com.jhlabs.image.DisplaceFilter;
+import com.jhlabs.image.InvertFilter;
+import com.jhlabs.image.RippleFilter;
+import com.jhlabs.image.SphereFilter;
+import com.jhlabs.image.WaterFilter;
 import com.octo.captcha.component.image.backgroundgenerator.BackgroundGenerator;
+import com.octo.captcha.component.image.backgroundgenerator.EllipseBackgroundGenerator;
+import com.octo.captcha.component.image.backgroundgenerator.FunkyBackgroundGenerator;
 import com.octo.captcha.component.image.backgroundgenerator.GradientBackgroundGenerator;
+import com.octo.captcha.component.image.backgroundgenerator.MultipleShapeBackgroundGenerator;
+import com.octo.captcha.component.image.deformation.ImageDeformation;
+import com.octo.captcha.component.image.deformation.ImageDeformationByFilters;
+import com.octo.captcha.component.image.fontgenerator.DeformedRandomFontGenerator;
 import com.octo.captcha.component.image.fontgenerator.FontGenerator;
+import com.octo.captcha.component.image.fontgenerator.RandomFontGenerator;
 import com.octo.captcha.component.image.fontgenerator.TwistedAndShearedRandomFontGenerator;
+import com.octo.captcha.component.image.fontgenerator.TwistedRandomFontGenerator;
+import com.octo.captcha.component.image.textpaster.BaffleRandomTextPaster;
+import com.octo.captcha.component.image.textpaster.DoubleRandomTextPaster;
 import com.octo.captcha.component.image.textpaster.RandomTextPaster;
 import com.octo.captcha.component.image.textpaster.TextPaster;
 import com.octo.captcha.component.image.wordtoimage.ComposedWordToImage;
+import com.octo.captcha.component.image.wordtoimage.DeformedComposedWordToImage;
 import com.octo.captcha.component.image.wordtoimage.WordToImage;
 import com.octo.captcha.component.wordgenerator.RandomWordGenerator;
 import com.octo.captcha.component.wordgenerator.WordGenerator;
 import com.octo.captcha.engine.image.ListImageCaptchaEngine;
+import com.octo.captcha.engine.image.gimpy.DefaultGimpyEngine;
 import com.octo.captcha.image.ImageCaptchaFactory;
+import com.octo.captcha.image.fisheye.FishEyeFactory;
 import com.octo.captcha.image.gimpy.GimpyFactory;
 
 /**
@@ -123,25 +145,24 @@ public class Captcha extends ListImageCaptchaEngine
 		int maxWords = SystemGlobals.getIntValue(ConfigKeys.CAPTCHA_MAX_WORDS);
 		int minFontSize = SystemGlobals.getIntValue(ConfigKeys.CAPTCHA_MIN_FONT_SIZE);
 		int maxFontSize = SystemGlobals.getIntValue(ConfigKeys.CAPTCHA_MAX_FONT_SIZE);
+		int fontColorRed = Integer
+				.parseInt((String) ObjectUtils.defaultIfNull(
+						SystemGlobals.getValue(ConfigKeys.CAPTCHA_FONT_RGB_RED),
+						"255"));
+		int fontColorGreen = Integer.parseInt((String) ObjectUtils
+				.defaultIfNull(SystemGlobals
+						.getValue(ConfigKeys.CAPTCHA_FONT_RGB_GREEN), "0"));
+		int fontColorBlue = Integer.parseInt((String) ObjectUtils
+				.defaultIfNull(SystemGlobals
+						.getValue(ConfigKeys.CAPTCHA_FONT_RGB_BLUE), "0"));
 
-		this.backgroundGeneratorList.add(new GradientBackgroundGenerator(new Integer(width), 
-				new Integer(height), Color.PINK, Color.LIGHT_GRAY));
-		this.backgroundGeneratorList.add(new GradientBackgroundGenerator(new Integer(width), 
-				new Integer(height), Color.WHITE, Color.RED));
-		this.backgroundGeneratorList.add(new GradientBackgroundGenerator(new Integer(width), 
-				new Integer(height), Color.ORANGE, Color.LIGHT_GRAY));
-		this.backgroundGeneratorList.add(new GradientBackgroundGenerator(new Integer(width), 
-				new Integer(height), Color.CYAN, Color.LIGHT_GRAY));
-		//this.backgroundGeneratorList.add(new FunkyBackgroundGenerator(new Integer(250), new Integer(50)));
-		
-		this.textPasterList.add(new RandomTextPaster(new Integer(minWords), new Integer(maxWords), Color.DARK_GRAY));
-		this.textPasterList.add(new RandomTextPaster(new Integer(minWords), new Integer(maxWords), Color.BLUE));
-		this.textPasterList.add(new RandomTextPaster(new Integer(minWords), new Integer(maxWords), Color.GREEN));
-		this.textPasterList.add(new RandomTextPaster(new Integer(minWords), new Integer(maxWords), Color.MAGENTA));
-		this.textPasterList.add(new RandomTextPaster(new Integer(minWords), new Integer(maxWords), Color.BLACK));
-		this.textPasterList.add(new RandomTextPaster(new Integer(minWords), new Integer(maxWords), Color.WHITE));
+		this.backgroundGeneratorList.add(new MultipleShapeBackgroundGenerator(
+				new Integer(width), new Integer(height)));
 
-		this.fontGeneratorList.add(new TwistedAndShearedRandomFontGenerator(new Integer(minFontSize), new Integer(maxFontSize)));
+		this.textPasterList.add(new RandomTextPaster(
+				new Integer(minWords), new Integer(maxWords), new Color(fontColorRed, fontColorGreen, fontColorBlue)));
+
+		this.fontGeneratorList.add(new RandomFontGenerator(new Integer(minFontSize), new Integer(maxFontSize)));
 
 		// Create a random word generator
 		WordGenerator words = new RandomWordGenerator(charsInUse);
@@ -155,14 +176,22 @@ public class Captcha extends ListImageCaptchaEngine
 				for (Iterator textIter = this.textPasterList.iterator(); textIter.hasNext();) {
 					TextPaster textPaster = (TextPaster) textIter.next();
 
-					WordToImage word2image = new ComposedWordToImage(fontGeny, bkgdGeny, textPaster);
+					WordToImage word2image = new DeformedComposedWordToImage(
+							fontGeny, bkgdGeny, textPaster,
+							new ImageDeformationByFilters(
+									new ImageFilter[] { new CrystalizeFilter() }),
+							new ImageDeformationByFilters(
+									new ImageFilter[] {  }),
+							new ImageDeformationByFilters(
+									new ImageFilter[] {  }));
 					
+//					ImageFilter[] filters={new WaterFilter(),new SphereFilter(),new RippleFilter(),new DisplaceFilter(),new InvertFilter(),};
 					// Creates a ImageCaptcha Factory
 					ImageCaptchaFactory factory = new GimpyFactory(words, word2image);
 					
 					// Add a factory to the gimpy list (A Gimpy is a ImagCaptcha)
 					addFactory(factory);
-				}
+				}	
 			}
 		}
 	}
